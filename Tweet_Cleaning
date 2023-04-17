@@ -1,0 +1,166 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[3]:
+
+
+# Import Libraries
+import pandas as pd
+import numpy as np
+import os
+
+import re #used for find and resplace regex expressions
+import string #used for get rid of punctuations
+import time
+import datetime
+
+import contractions
+from collections import Counter,OrderedDict
+
+from langdetect import detect # to detect non-english tweets
+
+# NLTK modules necessary for processing data for sentimental analysis
+import nltk #used for word tokenizing
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords, wordnet
+from nltk.stem import WordNetLemmatizer,PorterStemmer
+from nltk.util import ngrams
+nltk.download('punkt')
+nltk.download('wordnet')
+stop_words= set(stopwords.words('english'))
+stop_words.remove('not')
+
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
+from wordcloud import WordCloud
+
+
+# correction text tools
+from textblob import TextBlob
+from spellchecker import SpellChecker
+
+#changing data type from object to ....
+from ast import literal_eval
+
+
+
+from tqdm.notebook import tqdm
+tqdm.pandas()
+
+""" ignoring warnings """
+from warnings import filterwarnings
+filterwarnings('ignore')
+
+"""This will set the no truncate for Pandas as well as for Dask. 
+I am not sure how it does for Dask though, but it works."""
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+color = sns.color_palette()
+get_ipython().run_line_magic('matplotlib', 'inline')
+import plotly.offline as py
+py.init_notebook_mode(connected=True)
+import plotly.graph_objs as go
+import plotly.tools as tls
+import plotly.express as px
+#pd.set_option('display.max_colwidth', None)
+
+
+# In[16]:
+
+
+path = os.getcwd()
+path
+
+
+# In[6]:
+
+
+df_tweet = pd.read_csv(path+'\\rh_tweets_unclean_.csv', index_col='date')
+
+
+# In[9]:
+
+
+df_tweet.columns =['tweet', 'reply_count', 'retweet_count', 'like_count', 'quote_qount',
+       'hashtags', 'id', 'source_label', 'time']
+
+
+# In[12]:
+
+
+
+# Text lowercase 
+df_tweet['tweet'] = df_tweet['tweet'].str.lower()
+
+# Change date column type into datetime
+#df_tweet['date'] = pd.to_datetime(df_tweet['date'])
+
+"""PATTERNS"""
+# https://en.wikipedia.org/wiki/Unicode_block
+emoji_pattern = re.compile(
+    "["
+    "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F680-\U0001F6FF"  # transport & map symbols
+    "\U0001F700-\U0001F77F"  # alchemical symbols
+    "\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
+    "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
+    "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+    "\U0001FA00-\U0001FA6F"  # Chess Symbols
+    "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+    "\U00002702-\U000027B0"  # Dingbats
+    "\U000024C2-\U0001F251" 
+    "]+"
+)
+
+tag_pattern = re.compile("(?:\#)\S+") #hashtag pattern
+
+rt_mention_pattern = re.compile("rt @[A-Za-z0-9_:]+") #rt @ pattern
+
+mentioned_pattern = re.compile("(?:\@)\S+") # @mention pattern
+
+links_pattern = re.compile("http\S+|www\S+|https\S+") #http/https etc. pattern
+
+digits_pattern = re.compile("\w*\d+\w*") #removes all numbers 
+
+rt_and_pattern= re.compile("rt &[A-Za-z0-9_;]+") #removes "rt &"" pattern 
+
+
+"""CLEANING FUNCTION """
+
+translator = str.maketrans(" "," ",string.punctuation)
+start= time.time()
+def cleaning_tweet(data):
+    data = re.sub(emoji_pattern," ",str(data))             # remove emojis
+    data = re.sub(links_pattern," ",str(data))             # remove links
+    data = str(data).replace("#","")                        # remove hashtag sign
+    data = str(data).replace("...","")                        # remove 3dots
+    data = re.sub(rt_mention_pattern," ",str(data))        # remove "rt @"
+    data = re.sub(mentioned_pattern," ",str(data))         # remove mentiones
+    data = re.sub(rt_and_pattern," ",str(data))            # remove "rt &"data = re.sub(rt_and_patters," ",str(data)) 
+    data = str(data).replace("\n"," ")                     # remove "\n"
+    data = contractions.fix(data)                          #fix contractions Can't = cannot
+    data = data.translate(translator)                      # remove punctuations
+    data = " ".join([w for w in data.split() if not w.isdigit()]) # remove digits
+    return data
+    
+df_tweet['clean_tweet'] = df_tweet['tweet'].apply(lambda x: cleaning_tweet(x))                 
+end = time.time()
+print("Cleaning tweet process: ", end-start)
+
+
+# In[14]:
+
+
+df_tweet.clean_tweet[0]
+
+
+# In[17]:
+
+
+df_tweet.to_csv(path+'\\rh_tweets_clean.csv', index=True)
+
+
+# In[ ]:
