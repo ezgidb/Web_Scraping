@@ -1,0 +1,198 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import pandas as pd
+import numpy as np
+from warnings import filterwarnings
+from langdetect import detect # used for filtering english comments
+from langdetect import lang_detect_exception
+import re # used for find and resplace regex expressions
+from string import punctuation # used for get rid of punctuations
+import nltk #used for word tokenizing
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+nltk.download('punkt')
+import time
+#Parallelization is achieved by dividing a large chunk of data into smaller chunks and these smaller chunks are processed parallelly
+import swifter
+from textblob import TextBlob
+
+
+filterwarnings('ignore')
+
+stop_words= stopwords.words('english')
+stop_words.remove('not')
+
+
+# ### **Getting historical data of cyrptocurrencies:** \
+# 
+# 1- BINANCE\
+# 2- ....\
+# 3-....\
+
+# #### BINANCE INFO:
+# **With Binance API:**
+# HTTP method: GET \
+# API endpoint: /api/v3/klines
+# 
+# Request Parameters:
+# symbol: base crypto and pair. (Ex: BTCUSDT) \
+# interval: Candlestick time interval. Many traders call this timeframe.\
+# startTime: Historical start time in timestamp milliseconds. \
+# endTime: Historical end time in timestamp milliseconds. \
+# limit: Maximum number of candlesticks. \
+# 
+# \
+# 
+# Response:\
+# 
+# [\
+#   [\
+#     1499040000000,      // Kline open time\
+#     "0.01634790",       // Open price\
+#     "0.80000000",       // High price\
+#     "0.01575800",       // Low price\
+#     "0.01577100",       // Close price\
+#     "148976.11427815",  // Volume\
+#     1499644799999,      // Kline Close time\
+#     "2434.19055334",    // Quote asset volume\
+#     308,                // Number of trades\
+#     "1756.87402397",    // Taker buy base asset volume\
+#     "28.46694368",      // Taker buy quote asset volume\
+#     "0"                 // Unused field, ignore.\
+#   ]\
+# ]\
+# 
+
+# In[5]:
+
+
+import pandas as pd
+from tqdm.notebook import tqdm  # to show the  progress bar
+import snscrape.modules.twitter as snswitter
+import time
+import datetime
+import json
+import requests
+
+
+import warnings
+warnings.filterwarnings("ignore")
+
+# matplotlib and seaborn for plotting
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import matplotlib
+matplotlib.rc('figure', figsize = (20, 8))
+matplotlib.rc('font', size = 14)
+matplotlib.rc('axes.spines', top = False, right = False)
+matplotlib.rc('axes', grid = False)
+matplotlib.rc('axes', facecolor = 'white')
+
+path = '<folder path>'
+
+
+# In[6]:
+
+
+def save_as_csv_excel(df,filename,sheetname,path):
+    '{}'.format(df).to_csv(f'{path}{filename}.csv', index= False)
+    '{}'.format(df).to_excel(f'{path}{filename}.csv', sheet_name= f'{sheetname}', index=False)
+    Print(f'File is saved as Csv & Excel to the file : {path}')
+
+
+# In[7]:
+
+
+
+def binance_coin_scrape(base,quote,interval,startdate,enddate):
+"""    
+variable formats:
+    base = 'RNDR'
+    quote = 'USDT
+    interval = '1d'
+    startdate = yyyy/m/d
+    
+Returns 'base+quote'_df dataframe
+"""
+
+url = 'https://api.binance.com/'
+endpoint = 'api/v3/klines'
+
+symbol = base+quote
+interval = interval
+limit = 1000
+
+s_date = list(map(int,(startdate.split('/'))))
+e_date = list(map(int,(enddate.split('/'))))
+
+start = datetime.datetime(s_date[0],s_date[1],s_date[2],); end = datetime.datetime(e_date[0],e_date[1],e_date[2],)
+startTime = int(datetime.datetime.timestamp(start)*1000); endTime = int(datetime.datetime.timestamp(end)*1000)
+
+
+href = f"{url}{endpoint}?symbol={symbol}&interval={interval}&startTime={startTime}&endTime={endTime}&limit={limit}&"
+
+data = requests.get(href).json()
+
+
+binance_data = pd.DataFrame(data,columns = ["OpenTime", "Open", "High", "Low", "Close",f"{base} Volume","CloseTime",f"{quote} Volume","No. of trades", f"Taker Buy ({base})", f"Taker Buy ({quote})", "Ignore"])
+
+binance_data['CloseTime'] = binance_data['CloseTime'].div(1000)
+binance_data['OpenTime'] = binance_data['OpenTime'].div(1000)
+
+for i in range (len(binance_data['CloseTime'])):
+    binance_data['CloseTime'][i] = datetime.datetime.fromtimestamp(binance_data['CloseTime'][i])
+    binance_data['OpenTime'][i] = datetime.datetime.fromtimestamp(binance_data['OpenTime'][i])
+    
+return binance_data
+
+
+# In[21]:
+
+
+hourly1= binance_coin_scrape('BTC','USDT','1h','2021/2/5','2021/6/24')
+
+
+# In[22]:
+
+
+print(hourly1.OpenTime.iloc[0]," to", dot_hist_hour.OpenTime.iloc[-1])
+
+
+# In[25]:
+
+
+hourly2= binance_coin_scrape('BTC','USDT','1h','2021/3/18','2021/6/24')
+print(hourly2.OpenTime.iloc[0]," to", hourly2.OpenTime.iloc[-1])
+
+
+# In[26]:
+
+
+hourly3= binance_coin_scrape('BTC','USDT','1h','2021/4/28','2021/6/24')
+print(hourly3.OpenTime.iloc[0]," to", hourly3.OpenTime.iloc[-1])
+
+
+# In[27]:
+
+
+hourly4= binance_coin_scrape('BTC','USDT','1h','2021/6/8','2021/6/24')
+print(hourly4.OpenTime.iloc[0]," to", hourly4.OpenTime.iloc[-1])
+
+
+# In[30]:
+
+
+btc1 = pd.DataFrame(hourly1)
+btc2 = pd.DataFrame(hourly2)
+btc3 = pd.DataFrame(hourly3)
+btc4 = pd.DataFrame(hourly4)
+btc_hist_data = pd.concat([btc1,btc2,btc3,
+                          btc4], ignore_index= True, sort=False)
+btc_hist_data.info()
+btc_hist_data.to_csv(path+'btc_1h_20210205_20210624_full.csv', index= False)
+
