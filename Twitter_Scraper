@@ -1,0 +1,331 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# NOTES:
+# - how to get retweets (different func for different table in DB?)
+
+# In[1]:
+
+
+import pandas as pd
+from tqdm.notebook import tqdm  # to show the  progress bar
+import snscrape.modules.twitter as snswitter
+import time
+import datetime
+import json
+import requests
+
+
+import warnings
+warnings.filterwarnings("ignore")
+
+
+# ### # Save as DataFrames Function:
+
+# In[ ]:
+
+
+
+
+
+# In[2]:
+
+
+
+path= 'C:\\Users\\Ozan\\Desktop\\DS\\PostgreSQLPython\\Notebook\\'
+
+
+def save_as_csv_excel(df,filename,sheetname,path):
+    f'{df}'.to_csv(f'{path}{filename}.csv', index= False)
+    f'{df}'.to_excel(f'{path}{filename}.csv', sheet_name= f'{sheetname}', index=False)
+    Print(f'File is saved as Csv & Excel to the file : {path}')
+
+
+# ### 1- Scrape with hastag, time limits in bulks :
+
+# In[3]:
+
+
+"""
+call function:
+    coins_tweet_data = twitter_hastag_scrape("(rndr OR btc OR bitcoin OR celo OR blok OR bloktopia)", 100000,1000)
+
+%store coins_tweet_data
+
+call functoin : save_as_csv_excel(df,filename,sheetname,path):
+"""
+
+
+# # Scrape "from_now "Function:
+
+# In[4]:
+
+
+def twitter_hastag_scrape(keyword, how_many_tweets, bulk_size):
+    
+    until_time_start= int(time.time())
+    start_info = int(time.time())
+    total_loop_size = int(int(how_many_tweets)/int(bulk_size))
+    
+    column_names= ["date","tweet","user.username","user.id","user.displayname","user.created","user.verified","user.statusesCount","user.favouritesCount",
+                   "user.listedCount","user.mediaCount","user.location","user.followersCount", "user.friendsCount","replyCount","retweetCount",
+                   "likeCount","viewCount","retweetedTweet","quotedTweet","inReplyToUser","mentionedUsers","coordinates",
+                   "place","cashtags","hashtags","media","vibe"]
+    
+    
+    tweets =[]
+    
+    for t in tqdm(range(total_loop_size), total=total_loop_size, desc='Total loop process:'):
+        
+        query= ("({}) until_time:{} include:nativeretweets ").format(keyword,until_time_start)
+        scraper = snswitter.TwitterSearchScraper(query,top= True)
+        
+        for i,tweet in tqdm(enumerate(scraper.get_items()), total = bulk_size):
+            
+            data = [
+                tweet.date, 
+                tweet.rawContent, 
+                tweet.user.username, 
+                tweet.user.id,
+                tweet.user.displayname,
+                tweet.user.created, 
+                tweet.user.verified,                
+                tweet.user.statusesCount,
+                tweet.user.favouritesCount,
+                tweet.user.listedCount,
+                tweet.user.mediaCount,
+                tweet.user.location,
+                tweet.user.followersCount, 
+                tweet.user.friendsCount,
+                tweet.replyCount, 
+                tweet.retweetCount,
+                tweet.likeCount,
+                tweet.viewCount,
+                tweet.retweetedTweet,
+                tweet.quotedTweet,
+                tweet.inReplyToUser,
+                tweet.mentionedUsers,
+                tweet.coordinates,
+                tweet.place,
+                tweet.cashtags,
+                tweet.hashtags,
+                tweet.media,
+                tweet.vibe
+            
+            ]
+            
+            tweets.append(data)
+            
+            if i > bulk_size:
+                break
+        
+        print ('loop',t,'#tweets:',len(tweets))
+        
+        df_tweet = pd.DataFrame(tweets,columns=column_names)
+        
+        until_time_start = int(df_tweet.date.iloc[-1].timestamp())
+        print('until time:', until_time_start)
+        
+        #time.sleep(3)
+        
+        
+    final_tweet_df = pd.DataFrame(tweets, columns=column_names)
+    # droppping tinfo to save as excel file properly
+    final_tweet_df['date'] = final_tweet_df['date'].dt.tz_localize(None)
+    final_tweet_df['user.created'] = final_tweet_df['user.created'].dt.tz_localize(None)
+    #coin_data.to_csv(f'C:\\Users\\Ozan\\Desktop\\DS\\PostgreSQLPython\\Notebook\\rndr_btc_100000_tweets.txt', index=False)
+    return final_tweet_df, until_time_start
+    
+    
+    
+
+
+# # RUN : Scrape the data from now
+
+# In[6]:
+
+
+
+start = time.time()
+data = twitter_hastag_scrape("(@rifathisarciklioglu)",10000,1000)
+end = time.time()
+print(end-start)
+
+
+# In[7]:
+
+
+data[0]
+
+
+# In[18]:
+
+
+data[0].to_csv('C:\\Users\\Ozan\\Desktop\\DS\\PostgreSQLPython\\Notebook\\#tobb.csv')
+print(f"#tobb oglu scrape time left: {data[1]}")
+
+
+# In[13]:
+
+
+rifat_hastag_time= 1411893089
+tobb_hastag_time = 1673424484
+
+
+# In[141]:
+
+
+data[0].to_csv(f'{path}_#polkadot_4000', index= False)
+
+
+# # Scrape "from_time "Function:
+
+# In[46]:
+
+
+def twitter_hastag_scrape_fromTime(keyword, how_many_tweets, bulk_size, fromtime):
+    
+    until_time_start= int(fromtime)
+    start_info = int(time.time())
+    total_loop_size = int(int(how_many_tweets)/int(bulk_size))
+    
+    column_names= ["date","rawContent","user.username","user.id","user.displayname","user.created","user.verified","user.statusesCount","user.favouritesCount",
+                   "user.listedCount","user.mediaCount","user.location","user.followersCount", "user.friendsCount","replyCount","retweetCount",
+                   "likeCount","viewCount","retweetedTweet","quotedTweet","inReplyToUser","mentionedUsers","coordinates",
+                   "place","cashtags","hashtags","media","vibe"]
+    
+    
+    tweets =[]
+    
+    for t in tqdm(range(total_loop_size), total=total_loop_size, desc='Total loop process:'):
+        
+        query= ("({}) until_time:{} include:nativeretweets ").format(keyword,until_time_start)
+        scraper = snswitter.TwitterSearchScraper(query)
+        
+        for i,tweet in tqdm(enumerate(scraper.get_items()), total = bulk_size):
+            
+            data = [
+                tweet.date, 
+                tweet.rawContent, 
+                tweet.user.username, 
+                tweet.user.id,
+                tweet.user.displayname,
+                tweet.user.created, 
+                tweet.user.verified,                
+                tweet.user.statusesCount,
+                tweet.user.favouritesCount,
+                tweet.user.listedCount,
+                tweet.user.mediaCount,
+                tweet.user.location,
+                tweet.user.followersCount, 
+                tweet.user.friendsCount,
+                tweet.replyCount, 
+                tweet.retweetCount,
+                tweet.likeCount,
+                tweet.viewCount,
+                tweet.retweetedTweet,
+                tweet.quotedTweet,
+                tweet.inReplyToUser,
+                tweet.mentionedUsers,
+                tweet.coordinates,
+                tweet.place,
+                tweet.cashtags,
+                tweet.hashtags,
+                tweet.media,
+                tweet.vibe
+            
+            ]
+            
+            tweets.append(data)
+            
+            if i > bulk_size:
+                break
+        
+        print ('loop',t,'#tweets:',len(tweets))
+        
+        df_tweet = pd.DataFrame(tweets,columns=column_names)
+        
+        until_time_start = int(df_tweet.date.iloc[-1].timestamp())
+        print('until time:', until_time_start)
+        
+        time.sleep(3)
+        
+        
+    final_tweet_df = pd.DataFrame(tweets, columns=column_names)
+    # droppping tinfo to save as excel file properly
+    final_tweet_df['date'] = final_tweet_df['date'].dt.tz_localize(None)
+    final_tweet_df['user.created'] = final_tweet_df['user.created'].dt.tz_localize(None)
+    #coin_data.to_csv(f'C:\\Users\\Ozan\\Desktop\\DS\\PostgreSQLPython\\Notebook\\rndr_btc_100000_tweets.txt', index=False)
+    return final_tweet_df, until_time_start
+
+
+# # RUN : Scrape the data from "Time"
+
+# In[115]:
+
+
+start = time.time()
+
+end = time.time()
+print(end-start)
+
+
+# In[139]:
+
+
+start = time.time()
+for i in tqdm(range(2)):
+    data_aa = twitter_hastag_scrape("(#polkadot OR #dot)",2000,1000)
+    data_bb= pd.concat([data_bb,data_aa[0]], ignore_index= True)
+end = time.time()
+print(end-start)
+
+
+# In[130]:
+
+
+data_fin.head(10)
+
+
+# In[117]:
+
+
+data_fin.info()
+
+
+# In[120]:
+
+
+data_fin = data_fin.sort_values(by = ['date'], ignore_index= True, ascending= False)
+
+
+# In[121]:
+
+
+data_finz
+
+
+# In[122]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[151]:
+
+
+df = pd.read_csv(path+'#deprem_twitter_data_10')
+df.info()
+
+
+# In[145]:
+
+
+
+
